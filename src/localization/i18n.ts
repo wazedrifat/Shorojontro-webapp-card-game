@@ -30,14 +30,24 @@ class I18nManager {
   private translations: Map<Language, Translations> = new Map()
 
   async loadTranslations(language: Language): Promise<Translations> {
+    console.log(`[i18n] Starting to load ${language} translations`)
     try {
-      const response = await fetch(`/src/localization/translations/${language}.json`)
-      const data: Translations = await response.json()
-      this.translations.set(language, data)
-      return data
+      // Use dynamic import for JSON files - works with Vite
+      console.log(`[i18n] Importing ${language} JSON`)
+      const translations = language === 'bd'
+        ? (await import('@localization/translations/bd.json')).default
+        : (await import('@localization/translations/en.json')).default
+
+      console.log(`[i18n] ${language} JSON imported successfully`, Object.keys(translations))
+      this.translations.set(language, translations)
+      console.log(`[i18n] ${language} translations stored in map`)
+      return translations
     } catch (error) {
-      console.error(`Failed to load ${language} translations:`, error)
-      throw error
+      console.error(`[i18n] Failed to load ${language} translations:`, error)
+      // Return empty translations to allow game to proceed
+      const empty = { characters: {}, actions: {}, ui: {}, gameStates: {} }
+      console.log(`[i18n] Returning empty translations for ${language}`)
+      return empty
     }
   }
 

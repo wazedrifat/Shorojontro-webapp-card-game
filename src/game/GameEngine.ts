@@ -5,17 +5,35 @@
 
 import Phaser from 'phaser'
 import { Player } from './Player'
+import { AIBot } from './AIBot'
 
 export type GamePhase = 'waiting' | 'playerAction' | 'challenge' | 'block' | 'resolution' | 'gameOver'
 
-export class GameEngine {
+export interface GameState {
+  activePlayer: Player
+  phase: GamePhase
+  currentAction?: {
+    key: string
+    targetPlayerId?: string
+  }
+  gameWinner?: Player
+}
+
+export class GameEngine extends Phaser.Events.EventEmitter {
   private players: Map<string, Player> = new Map()
   private currentPlayerIndex: number = 0
   private phase: GamePhase = 'waiting'
   private deck: string[] = []
   private selectedCharacters: string[] = []
+  private _aiBot: AIBot
+  private _updateCallback: ((state: GameState) => void) | null = null
 
   constructor(_scene: Phaser.Scene) {
+    super()
+    // Initialize bot (for future use)
+    this._aiBot = new AIBot('easy')
+    // Initialize callback placeholder
+    this._updateCallback = null
     this.initializeGame()
   }
 
