@@ -1,0 +1,25 @@
+{
+  "name": "shorojontro-webapp",
+  "version": "0.1.0",
+  "description": "A Bangladeshi social deduction card game built with Phaser 3",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext .ts,.tsx",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "phaser": "^3.55.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "terser": "^5.48.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.8"
+  }
+}

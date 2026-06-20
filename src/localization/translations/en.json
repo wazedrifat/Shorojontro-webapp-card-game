@@ -1,0 +1,124 @@
+{
+  "characters": {
+    "veerVikram": {
+      "name": "Veer Vikram",
+      "ability": "Warrior's Stipend",
+      "description": "Take 3 coins from the bank",
+      "blockDescription": "Cannot be affected by other characters"
+    },
+    "kaluDakayt": {
+      "name": "Kalu Dakayt",
+      "ability": "Robbery",
+      "description": "Take 2 coins from a target player",
+      "blockDescription": "Block robbery attempts"
+    },
+    "petukchandra": {
+      "name": "Petukchandra",
+      "ability": "Exchange",
+      "description": "Draw 2 cards from deck, return 2 cards",
+      "blockDescription": "Cannot be affected"
+    },
+    "jinnerBadshah": {
+      "name": "Jinn's King",
+      "ability": "Protection",
+      "description": "Take 1 coin and place Jinn Token",
+      "blockDescription": "Protected from targeting"
+    },
+    "mamdoHomdho": {
+      "name": "Mamdo-Homdho",
+      "ability": "Grand Feast",
+      "description": "Take 8 coins from bank. Pay 1 to each player who also claims Mamdo",
+      "blockDescription": "Collective response"
+    },
+    "putuulRaj": {
+      "name": "Puppet King",
+      "ability": "Puppet Scheme",
+      "description": "Place 2 puppet tokens - one for yourself, one for another player",
+      "blockDescription": "Linked players cannot target each other"
+    },
+    "bokhdoity": {
+      "name": "Bokhdoity",
+      "ability": "Neck Strike",
+      "description": "Give target 3 coins and they lose 1 card",
+      "blockDescription": "Block neck strike"
+    },
+    "chichkeChhor": {
+      "name": "Chichke Chor",
+      "ability": "Theft",
+      "description": "All other players give you 1 coin each",
+      "blockDescription": "Block theft"
+    },
+    "arun": {
+      "name": "Arun",
+      "ability": "Detective Work",
+      "description": "Look at cards from deck. Pay 1 coin per additional card viewed",
+      "blockDescription": "Information access"
+    },
+    "nantuMiya": {
+      "name": "Nantu Miya",
+      "ability": "Tax Scheme",
+      "description": "Place 2 tax tokens. Players using that character pay you 1 coin",
+      "blockDescription": "Tax on character use"
+    },
+    "betalPrataraj": {
+      "name": "Betel Prataraj",
+      "ability": "Invisibility",
+      "description": "Target pays 2 coins or you pay 5 and remove 1 card",
+      "blockDescription": "Protection against invisibility"
+    }
+  },
+  "actions": {
+    "income": "Income",
+    "foreignAid": "Foreign Aid",
+    "coup": "Coup",
+    "tax": "Tax",
+    "exchange": "Exchange",
+    "steal": "Steal",
+    "assassinate": "Assassinate",
+    "challenge": "Challenge",
+    "block": "Block",
+    "pass": "Pass"
+  },
+  "ui": {
+    "title": "Shorojontro",
+    "subtitle": "ষড়যন্ত্র",
+    "play": "Play",
+    "selectLanguage": "Select Language",
+    "bangla": "বাংলা",
+    "english": "English",
+    "singlePlayer": "Single Player",
+    "multiplayer": "Multiplayer",
+    "settings": "Settings",
+    "back": "Back",
+    "start": "Start",
+    "coins": "Coins",
+    "influence": "Influence",
+    "revealed": "Revealed",
+    "hand": "Hand",
+    "deck": "Deck",
+    "selectAction": "Select an Action",
+    "selectTarget": "Select Target",
+    "declareCharacter": "Declare Character",
+    "yesChallenge": "Challenge",
+    "noChallenge": "Accept",
+    "block": "Block",
+    "allowAction": "Allow Action",
+    "playerTurn": "'s Turn",
+    "waitingForAction": "Waiting for action...",
+    "challenged": "Challenged!",
+    "blocked": "Blocked!",
+    "winner": "Winner",
+    "gameOver": "Game Over",
+    "playAgain": "Play Again",
+    "mainMenu": "Main Menu"
+  },
+  "gameStates": {
+    "drawingPhase": "Drawing cards...",
+    "actionPhase": "Action phase",
+    "challengePhase": "Challenge phase",
+    "blockPhase": "Block phase",
+    "resolutionPhase": "Resolution phase",
+    "playerEliminated": "Player eliminated",
+    "gameWon": "Game won"
+  }
+}
