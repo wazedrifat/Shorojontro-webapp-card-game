@@ -9,6 +9,7 @@ import { AnimationManager } from './AnimationManager'
 export class HandUI extends Phaser.GameObjects.Container {
   private cards: CardUI[] = []
   private animationManager: AnimationManager
+  private onCardClickCallback: ((characterKey: string) => void) | null = null
 
   constructor(
     scene: Phaser.Scene,
@@ -21,14 +22,19 @@ export class HandUI extends Phaser.GameObjects.Container {
     scene.add.existing(this)
   }
 
-  addCard(characterKey: string, characterName: string, faceUp: boolean = false): CardUI {
+  setOnCardClickCallback(callback: (characterKey: string) => void): void {
+    this.onCardClickCallback = callback
+  }
+
+  addCard(characterKey: string, characterName: string, faceUp: boolean = false, isPlayerCard: boolean = false): CardUI {
     const card = new CardUI(
       this.scene,
       {
         characterKey,
         characterName,
         faceUp,
-        interactive: false,
+        isPlayerCard,
+        onClickCallback: isPlayerCard ? () => this.onCardClickCallback?.(characterKey) : undefined,
       },
       this.animationManager
     )
@@ -42,7 +48,7 @@ export class HandUI extends Phaser.GameObjects.Container {
 
   private rearrangeCards(): void {
     const totalCards = this.cards.length
-    const spacing = 50
+    const spacing = 70
     const startX = -(totalCards - 1) * spacing * 0.5
 
     this.cards.forEach((card, index) => {
@@ -68,3 +74,4 @@ export class HandUI extends Phaser.GameObjects.Container {
     this.cards = []
   }
 }
+
