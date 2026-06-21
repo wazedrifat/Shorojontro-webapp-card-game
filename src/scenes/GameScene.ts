@@ -7,6 +7,7 @@ import { BoardUI } from '@ui/BoardUI'
 import { ActionPanel } from '@ui/ActionPanel'
 import { ToastNotification } from '@ui/ToastNotification'
 import { COLORS, Z_INDEX } from '@utils/constants'
+import { getCharacterByKey } from '@game/Card'
 
 export class GameScene extends Phaser.Scene {
   private gameEngine: GameEngine | null = null
@@ -23,7 +24,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
-    console.log('[GameScene] create() starting')
+    console.log('[GameScene] Starting...')
     this.cameras.main.setBackgroundColor(COLORS.BACKGROUND)
 
     // Initialize managers
@@ -48,43 +49,42 @@ export class GameScene extends Phaser.Scene {
 
       // Add cards to hand UI
       player.getFaceDownCards().forEach((cardKey) => {
+        const character = getCharacterByKey(cardKey)
         const playerArea = this.boardUI?.getPlayerArea(player.getId())
-        if (playerArea) {
-          playerArea.handUI.addCard(cardKey, false)
+        if (playerArea && character) {
+          playerArea.handUI.addCard(cardKey, character.name, false)
         }
       })
     })
 
-    // Show game start notification
-    this.toast?.success('Game Started!')
+    // Top status bar
+    const topPanel = this.add.rectangle(this.cameras.main.width / 2, 30, this.cameras.main.width, 50, parseInt(COLORS.DARK.replace('#', '0x'), 16))
+    topPanel.setStrokeStyle(1, parseInt(COLORS.PRIMARY.replace('#', '0x'), 16))
 
-    // Add turn indicator
+    // Turn indicator
     this.gameStateText = this.add
-      .text(this.cameras.main.width / 2, 20, '', {
-        fontSize: 16,
+      .text(20, 30, '', {
+        fontSize: 18,
         color: COLORS.INFO,
         fontFamily: 'Arial',
+        fontStyle: 'bold',
       })
-      .setOrigin(0.5)
+      .setOrigin(0, 0.5)
       .setDepth(Z_INDEX.UI_OVERLAY)
 
-    // Add instruction text
+    // Instruction text (center top)
     this.instructionText = this.add
-      .text(this.cameras.main.width / 2, 60, 'DEMO: Coins increase each turn automatically. Click action buttons below to play.', {
-        fontSize: 12,
+      .text(this.cameras.main.width / 2, 30, '← Select an action button below →', {
+        fontSize: 14,
         color: '#FFD700',
         fontFamily: 'Arial',
-        backgroundColor: '#333',
-        padding: { x: 10, y: 5 },
       })
       .setOrigin(0.5)
       .setDepth(Z_INDEX.UI_OVERLAY)
 
-    this.updateGameState()
-
-    // Back to menu button
+    // Back to menu button (top right)
     this.add
-      .rectangle(50, 50, 100, 40, parseInt(COLORS.PRIMARY.replace('#', '0x'), 16))
+      .rectangle(this.cameras.main.width - 50, 30, 80, 40, parseInt(COLORS.PRIMARY.replace('#', '0x'), 16))
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => {
         this.scene.start('MenuScene')
@@ -92,14 +92,16 @@ export class GameScene extends Phaser.Scene {
       .setDepth(Z_INDEX.UI_OVERLAY)
 
     this.add
-      .text(50, 50, i18n.t('back', 'ui'), {
-        fontSize: 14,
+      .text(this.cameras.main.width - 50, 30, 'Menu', {
+        fontSize: 12,
         color: '#000',
         fontFamily: 'Arial',
         fontStyle: 'bold',
       })
       .setOrigin(0.5)
       .setDepth(Z_INDEX.UI_OVERLAY + 1)
+
+    this.updateGameState()
 
     // Set up action panel callback
     if (this.actionPanel) {
@@ -109,7 +111,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Simulate a turn (demo mode)
-    this.time.delayedCall(2000, () => {
+    this.time.delayedCall(1500, () => {
       this.simulatePlayerTurn()
     })
   }
@@ -118,11 +120,9 @@ export class GameScene extends Phaser.Scene {
     if (!this.gameEngine || !this.gameStateText) return
 
     const currentPlayer = this.gameEngine.getCurrentPlayer()
-    const phase = this.gameEngine.getPhase()
+    const coinsText = `${currentPlayer.getName()} | 💰 ${currentPlayer.getCoins()}`
 
-    this.gameStateText.setText(
-      `${currentPlayer.getName()} - ${phase.toUpperCase()}`
-    )
+    this.gameStateText.setText(coinsText)
   }
 
   private simulatePlayerTurn(): void {
@@ -130,18 +130,23 @@ export class GameScene extends Phaser.Scene {
 
     const currentPlayer = this.gameEngine.getCurrentPlayer()
 
+    // Update instruction
+    if (this.instructionText) {
+      this.instructionText.setText(`${currentPlayer.getName()}'s turn - Pick an action:`)
+    }
+
     // Show action options
     const actions = [
-      { key: 'income', label: 'Income (+1 coin)', requiresTarget: false, cost: 0 },
-      { key: 'characterAbility', label: 'Use Ability', requiresTarget: true, cost: 0 },
+      { key: 'income', label: 'Income', requiresTarget: false, cost: 0 },
+      { key: 'characterAbility', label: 'Character', requiresTarget: false, cost: 0 },
     ]
 
     // Only show kill if has 7+ coins
     if (currentPlayer.getCoins() >= 7) {
-      actions.push({ key: 'kill', label: 'Kill (-7 coins)', requiresTarget: true, cost: 7 })
+      actions.push({ key: 'kill', label: 'Kill (7💰)', requiresTarget: true, cost: 7 })
     }
 
-    this.actionPanel?.showActionSelection(actions)
+    this.actionPanel.showActionSelection(actions)
   }
 
   private handleActionSelected(action: string): void {
@@ -150,12 +155,14 @@ export class GameScene extends Phaser.Scene {
     this.actionPanel?.hide()
 
     const currentPlayer = this.gameEngine.getCurrentPlayer()
-    const actionName = action === 'income' ? 'Income' : action
+    let actionText = action
+    if (action === 'income') actionText = 'Income +1💰'
+    if (action === 'kill') actionText = 'Kill -7💰'
 
-    this.toast?.info(`${currentPlayer.getName()} → ${actionName}`)
+    this.toast?.info(`${currentPlayer.getName()} → ${actionText}`)
 
     // Simulate action resolution
-    this.time.delayedCall(1500, () => {
+    this.time.delayedCall(1200, () => {
       if (action === 'income') {
         currentPlayer.addCoins(1)
         const playerArea = this.boardUI?.getPlayerArea(currentPlayer.getId())
@@ -168,13 +175,12 @@ export class GameScene extends Phaser.Scene {
       // Move to next turn
       this.gameEngine?.nextTurn()
       this.updateGameState()
-      this.time.delayedCall(1000, () => this.simulatePlayerTurn())
+
+      this.time.delayedCall(800, () => this.simulatePlayerTurn())
     })
   }
 
   update(): void {
-    if (this.gameEngine) {
-      // Game loop updates here
-    }
+    // Game loop updates here
   }
 }

@@ -1,6 +1,5 @@
 /**
- * Hand UI Component
- * Displays and manages player's hand of cards
+ * Hand UI Component - Simplified
  */
 
 import Phaser from 'phaser'
@@ -22,15 +21,14 @@ export class HandUI extends Phaser.GameObjects.Container {
     scene.add.existing(this)
   }
 
-  addCard(characterKey: string, faceUp: boolean = false): CardUI {
+  addCard(characterKey: string, characterName: string, faceUp: boolean = false): CardUI {
     const card = new CardUI(
       this.scene,
       {
-        x: 0,
-        y: 0,
         characterKey,
+        characterName,
         faceUp,
-        interactive: true,
+        interactive: false,
       },
       this.animationManager
     )
@@ -44,14 +42,11 @@ export class HandUI extends Phaser.GameObjects.Container {
 
   private rearrangeCards(): void {
     const totalCards = this.cards.length
-    const spacing = 100
+    const spacing = 50
     const startX = -(totalCards - 1) * spacing * 0.5
 
     this.cards.forEach((card, index) => {
-      const targetX = startX + index * spacing
-      const curve = Math.sin((index / (totalCards - 1)) * Math.PI) * 30
-
-      this.animationManager.moveTo(card, { x: targetX, y: curve }, { duration: 200 })
+      card.setPosition(startX + index * spacing, 0)
     })
   }
 
