@@ -1,5 +1,9 @@
 import Phaser from "phaser";
-import { characterCardKeys } from "../assets/assetManifest";
+import {
+  characterActionCardKeys,
+  characterCardKeys,
+  generalActionCardKeys,
+} from "../assets/assetManifest";
 
 type CardSprite = {
   sprite: Phaser.GameObjects.Image;
@@ -23,6 +27,10 @@ export class GameScene extends Phaser.Scene {
   private cardHeight = 220;
   private deckPosition!: Phaser.Math.Vector2;
   private bankPosition!: Phaser.Math.Vector2;
+  private actionButton?: Phaser.GameObjects.Container;
+  private actionMenu?: Phaser.GameObjects.Container;
+  private actionPanel?: Phaser.GameObjects.Container;
+  private actionOverlay?: Phaser.GameObjects.Rectangle;
 
   constructor() {
     super("GameScene");
@@ -54,6 +62,7 @@ export class GameScene extends Phaser.Scene {
       height / 2 + 30,
     );
     this.addPlayerLabels(textResolution);
+    this.addActionButton(textResolution);
 
     this.runSequence(2).catch((error) => {
       // eslint-disable-next-line no-console
@@ -65,7 +74,7 @@ export class GameScene extends Phaser.Scene {
     await this.animateIntroFlight(27);
 
     const deck = this.buildDeck();
-    await this.shuffleDeck(deck, 5000);
+    await this.shuffleDeck(deck, 3000);
     await this.dealCards(deck, playerCount);
     await this.dropCoins(playerCount);
   }
@@ -119,21 +128,24 @@ export class GameScene extends Phaser.Scene {
   }
 
   private async shuffleDeck(deck: CardSprite[], durationMs: number) {
-    const topCards = deck.slice(-12);
+    const topCards = deck;
     const shuffleSteps = Math.max(1, Math.floor(durationMs / 320));
 
     for (let step = 0; step < shuffleSteps; step += 1) {
-      const outTweens = topCards.map((card, index) =>
-        this.tweenPromise({
+      const outTweens = topCards.map((card, index) => {
+        const depthIndex = Phaser.Math.Between(-8, 12);
+        card.sprite.setDepth(40 + depthIndex);
+        return this.tweenPromise({
           targets: card.sprite,
-          x: this.deckPosition.x + Phaser.Math.Between(-160, 160),
-          y: this.deckPosition.y + Phaser.Math.Between(-120, 120),
-          angle: Phaser.Math.Between(-28, 28),
-          scaleX: GameScene.CARD_SCALE * 0.7,
-          duration: 160 + index * 6,
+          x: this.deckPosition.x + Phaser.Math.Between(-220, 220),
+          y: this.deckPosition.y + Phaser.Math.Between(-170, 170),
+          angle: Phaser.Math.Between(-45, 45),
+          scaleX: GameScene.CARD_SCALE * Phaser.Math.FloatBetween(0.45, 1.05),
+          scaleY: GameScene.CARD_SCALE * Phaser.Math.FloatBetween(0.6, 1.15),
+          duration: 200 + index * 6,
           ease: "Sine.easeInOut",
-        }),
-      );
+        });
+      });
 
       await Promise.all(outTweens);
 
@@ -144,7 +156,8 @@ export class GameScene extends Phaser.Scene {
           y: this.deckPosition.y - index * 0.4,
           angle: 0,
           scaleX: GameScene.CARD_SCALE,
-          duration: 160 + index * 6,
+          scaleY: GameScene.CARD_SCALE,
+          duration: 200 + index * 6,
           ease: "Sine.easeInOut",
         }),
       );
@@ -315,6 +328,312 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  private addActionButton(textResolution: number) {
+    const { width, height } = this.scale;
+    const buttonWidth = Math.max(160, width * 0.12);
+    const buttonHeight = 46;
+    const x = width * 0.08;
+    const y = height * 0.5;
+
+    const buttonBg = this.add
+      .rectangle(0, 0, buttonWidth, buttonHeight, 0x1b2c2a, 0.9)
+      .setStrokeStyle(2, 0xd7c48f, 0.9)
+      .setOrigin(0.5);
+    const buttonText = this.add
+      .text(0, 0, "Action", {
+        fontSize: "18px",
+        color: "#f0e2b8",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setResolution(textResolution);
+
+    const container = this.add.container(x, y, [buttonBg, buttonText]);
+    container.setSize(buttonWidth, buttonHeight);
+    container.setInteractive(
+      new Phaser.Geom.Rectangle(
+        -buttonWidth / 2,
+        -buttonHeight / 2,
+        buttonWidth,
+        buttonHeight,
+      ),
+      Phaser.Geom.Rectangle.Contains,
+    );
+
+    container.on("pointerdown", () => {
+      this.toggleActionMenu(textResolution);
+    });
+
+    container.on("pointerover", () => {
+      buttonBg.setFillStyle(0x243b37, 0.95);
+    });
+    container.on("pointerout", () => {
+      buttonBg.setFillStyle(0x1b2c2a, 0.9);
+    });
+
+    this.actionButton = container;
+  }
+
+  private toggleActionMenu(textResolution: number) {
+    if (this.actionMenu) {
+      this.actionMenu.destroy(true);
+      this.actionMenu = undefined;
+      return;
+    }
+
+    const { width, height } = this.scale;
+    const menuWidth = Math.max(220, width * 0.16);
+    const menuHeight = 140;
+    const x = width * 0.08;
+    const y = height * 0.5 + 70;
+
+    const menuBg = this.add
+      .rectangle(0, 0, menuWidth, menuHeight, 0x0f1f1d, 0.95)
+      .setStrokeStyle(2, 0xd7c48f, 0.85)
+      .setOrigin(0.5);
+
+    const generalBtn = this.buildMenuButton(
+      0,
+      -30,
+      "General Action",
+      textResolution,
+      () => this.openActionPanel("general", textResolution),
+    );
+    const characterBtn = this.buildMenuButton(
+      0,
+      30,
+      "Character Action",
+      textResolution,
+      () => this.openActionPanel("character", textResolution),
+    );
+
+    const menu = this.add.container(x, y, [menuBg, generalBtn, characterBtn]);
+    menu.setDepth(50);
+    menu.scale = 0.9;
+    this.tweens.add({
+      targets: menu,
+      scale: 1,
+      duration: 180,
+      ease: "Back.easeOut",
+    });
+
+    this.actionMenu = menu;
+  }
+
+  private buildMenuButton(
+    x: number,
+    y: number,
+    label: string,
+    textResolution: number,
+    onClick: () => void,
+  ) {
+    const width = 180;
+    const height = 38;
+    const bg = this.add
+      .rectangle(0, 0, width, height, 0x223935, 0.9)
+      .setStrokeStyle(1, 0xdbc894, 0.8)
+      .setOrigin(0.5);
+    const text = this.add
+      .text(0, 0, label, {
+        fontSize: "16px",
+        color: "#f3e7c2",
+      })
+      .setOrigin(0.5)
+      .setResolution(textResolution);
+
+    const container = this.add.container(x, y, [bg, text]);
+    container.setSize(width, height);
+    container.setInteractive(
+      new Phaser.Geom.Rectangle(-width / 2, -height / 2, width, height),
+      Phaser.Geom.Rectangle.Contains,
+    );
+    container.on("pointerover", () => bg.setFillStyle(0x2b4843, 1));
+    container.on("pointerout", () => bg.setFillStyle(0x223935, 0.9));
+    container.on("pointerdown", () => onClick());
+    return container;
+  }
+
+  private openActionPanel(
+    type: "general" | "character",
+    textResolution: number,
+  ) {
+    if (this.actionPanel) {
+      this.actionPanel.destroy(true);
+    }
+
+    if (this.actionMenu) {
+      this.actionMenu.destroy(true);
+      this.actionMenu = undefined;
+    }
+
+    const { width, height } = this.scale;
+    const overlay = this.add
+      .rectangle(width / 2, height / 2, width, height, 0x000000, 0.55)
+      .setInteractive()
+      .setDepth(500);
+    this.actionOverlay = overlay;
+
+    const panelWidth = Math.min(width * 0.72, 900);
+    const panelHeight = Math.min(height * 0.62, 560);
+    const panelBg = this.add
+      .rectangle(0, 0, panelWidth, panelHeight, 0x132220, 0.96)
+      .setStrokeStyle(2, 0xd7c48f, 0.9)
+      .setOrigin(0.5);
+
+    const title = this.add
+      .text(0, -panelHeight / 2 + 26, `${type === "general" ? "General" : "Character"} Actions`, {
+        fontSize: "22px",
+        color: "#f3e7c2",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5)
+      .setResolution(textResolution);
+
+    const closeBtn = this.add
+      .text(panelWidth / 2 - 24, -panelHeight / 2 + 18, "✕", {
+        fontSize: "20px",
+        color: "#f3e7c2",
+      })
+      .setOrigin(0.5)
+      .setResolution(textResolution);
+
+    closeBtn.setInteractive({ useHandCursor: true });
+    const closePanel = () => {
+      this.actionPanel?.destroy(true);
+      this.actionPanel = undefined;
+      this.actionOverlay?.destroy();
+      this.actionOverlay = undefined;
+    };
+
+    closeBtn.on("pointerdown", closePanel);
+    overlay.on("pointerdown", closePanel);
+
+    const cardKeys =
+      type === "general" ? generalActionCardKeys : characterActionCardKeys;
+    const deckKeys = Phaser.Utils.Array.Shuffle([...cardKeys]);
+    const deckX = panelWidth * 0.16;
+    const deckY = panelHeight * 0.05;
+    const activeX = 0;
+    const activeY = 30;
+    const cardMaxWidth = panelWidth * 0.32;
+    const cardScale = cardMaxWidth / this.cardWidth;
+
+    const stackSize = 3;
+    const getStackKey = (index: number) => {
+      const offset = stackSize - index;
+      return deckKeys[offset % deckKeys.length];
+    };
+
+    const stackSprites = Array.from({ length: stackSize }, (_, index) =>
+      this.add
+        .image(
+          deckX + index * 6,
+          deckY + index * 6,
+          this.getScaledCardKey(getStackKey(index)),
+        )
+        .setScale(cardScale * (1 - index * 0.03))
+        .setAngle(-6 + index * 2)
+        .setDepth(index),
+    );
+
+    const activeCard = this.add
+      .image(activeX, activeY, this.getScaledCardKey(deckKeys[0]))
+      .setScale(cardScale)
+      .setInteractive({ useHandCursor: true });
+
+    const updateStackFaces = () => {
+      stackSprites.forEach((sprite, index) => {
+        sprite.setTexture(this.getScaledCardKey(getStackKey(index)));
+      });
+    };
+
+    const cycleCard = () => {
+      if (deckKeys.length === 0) {
+        return;
+      }
+      const currentKey = deckKeys.shift();
+      if (!currentKey) {
+        return;
+      }
+      deckKeys.push(currentKey);
+      const nextKey = deckKeys[0];
+
+      this.tweens.add({
+        targets: activeCard,
+        x: deckX + 20,
+        y: deckY + 20,
+        angle: -18,
+        scale: cardScale * 0.75,
+        alpha: 0.4,
+        duration: 260,
+        ease: "Cubic.easeIn",
+        onComplete: () => {
+          updateStackFaces();
+          activeCard.setTexture(this.getScaledCardKey(nextKey));
+          activeCard.setPosition(activeX, activeY);
+          activeCard.setAngle(0);
+          activeCard.setAlpha(1);
+          this.tweens.add({
+            targets: activeCard,
+            scale: cardScale,
+            duration: 260,
+            ease: "Back.easeOut",
+          });
+        },
+      });
+      // eslint-disable-next-line no-console
+      console.log("Selected action card:", currentKey);
+    };
+
+    activeCard.on("pointerdown", cycleCard);
+    this.input.on(
+      "wheel",
+      (_pointer: Phaser.Input.Pointer, _dx: number, dy: number) => {
+      if (!this.actionPanel) {
+        return;
+      }
+      if (dy !== 0) {
+        cycleCard();
+      }
+      },
+    );
+
+    const nextBtn = this.buildMenuButton(
+      panelWidth / 2 - 90,
+      panelHeight / 2 - 40,
+      "Next",
+      textResolution,
+      cycleCard,
+    );
+    const closeHint = this.add
+      .text(panelWidth / 2 - 90, panelHeight / 2 - 80, "Tap to close", {
+        fontSize: "12px",
+        color: "#cbb88a",
+      })
+      .setOrigin(0.5)
+      .setResolution(textResolution);
+
+    const panel = this.add.container(width / 2, height / 2, [
+      panelBg,
+      title,
+      closeBtn,
+      ...stackSprites,
+      activeCard,
+      nextBtn,
+      closeHint,
+    ]);
+    panel.setDepth(510);
+    panel.scale = 0.9;
+    this.tweens.add({
+      targets: panel,
+      scale: 1,
+      duration: 220,
+      ease: "Back.easeOut",
+    });
+
+    this.actionPanel = panel;
+  }
+
   private getTextResolution() {
     const deviceRatio = window.devicePixelRatio || 1;
     // eslint-disable-next-line no-console
@@ -323,7 +642,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private prepareScaledCardTextures() {
-    const cardKeys = ["cards/card_backside", ...characterCardKeys];
+    const cardKeys = [
+      "cards/card_backside",
+      ...characterCardKeys,
+      ...generalActionCardKeys,
+      ...characterActionCardKeys,
+    ];
     cardKeys.forEach((key) => {
       const scaledKey = this.getScaledCardKey(key);
       if (this.textures.exists(scaledKey)) {

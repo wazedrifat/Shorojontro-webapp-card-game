@@ -114,3 +114,11 @@ export const assetManifest: AssetEntry[] = [
 export const characterCardKeys = assetManifest
   .filter((asset) => asset.key.includes("characterCards/"))
   .map((asset) => asset.key);
+
+export const characterActionCardKeys = assetManifest
+  .filter((asset) => asset.key.includes("characterActionCards/"))
+  .map((asset) => asset.key);
+
+export const generalActionCardKeys = assetManifest
+  .filter((asset) => asset.key.includes("generalActionCards/"))
+  .map((asset) => asset.key);
