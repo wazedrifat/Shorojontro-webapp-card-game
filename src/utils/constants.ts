@@ -47,6 +47,7 @@ export const COLORS = {
   SECONDARY: '#2d5a2d',
   SUCCESS: '#4ade80',
   ERROR: '#ef4444',
+  DANGER: '#dc2626',
   WARNING: '#f59e0b',
   INFO: '#3b82f6',
   BACKGROUND: '#0a0e27',

@@ -1,57 +1,61 @@
 /**
- * Simplified Card UI Component
- * Just display the card name and character symbol
+ * Card UI Component - Display card with actual images
  */
 
 import Phaser from 'phaser'
 import { AnimationManager } from './AnimationManager'
+import { getCharacterTexture, getCardBacksideTexture } from '@utils/assetRegistry'
 
 export interface CardUIOptions {
   characterKey: string
   characterName: string
   faceUp: boolean
-  interactive?: boolean
-}
-
-const CHARACTER_SYMBOLS: Record<string, string> = {
-  veerVikram: '⚔️',
-  kaluDakayt: '🗡️',
-  petukchandra: '📜',
-  jinnerBadshah: '👑',
-  mamdoHomdho: '🍖',
-  putuulRaj: '🎭',
-  bokhdoity: '💀',
-  chichkeChhor: '🏃',
-  arun: '🔍',
-  nantuMiya: '💰',
-  betalPrataraj: '👻',
+  isPlayerCard?: boolean
+  onClickCallback?: () => void
 }
 
 export class CardUI extends Phaser.GameObjects.Container {
-  private text: Phaser.GameObjects.Text
+  private sprite: Phaser.GameObjects.Image
   private characterKey: string
   private faceUp: boolean
+  private isPlayerCard: boolean
 
   constructor(scene: Phaser.Scene, options: CardUIOptions, _animationManager: AnimationManager) {
     super(scene, 0, 0)
 
     this.characterKey = options.characterKey
     this.faceUp = options.faceUp
+    this.isPlayerCard = options.isPlayerCard || false
 
-    // Create simple text display
-    const symbol = CHARACTER_SYMBOLS[options.characterKey] || '?'
-    const displayText = this.faceUp ? `${symbol}\n${options.characterName.substring(0, 8)}` : '?'
+    // Determine if card should be shown face-up
+    const shouldShowFaceUp = this.faceUp || this.isPlayerCard
 
-    this.text = scene.add
-      .text(0, 0, displayText, {
-        fontSize: this.faceUp ? '12px' : '18px',
-        color: this.faceUp ? '#4a9eff' : '#888',
-        fontFamily: 'Arial',
-        align: 'center',
-      })
-      .setOrigin(0.5)
+    // Get the appropriate texture key
+    const textureKey = shouldShowFaceUp
+      ? getCharacterTexture(options.characterKey)
+      : getCardBacksideTexture()
 
-    this.add(this.text)
+    // Create sprite with image
+    this.sprite = scene.add
+      .image(0, 0, textureKey)
+      .setDisplaySize(140, 180)
+
+    // Add border
+    const border = scene.add
+      .rectangle(0, 0, 140, 180, 0x000000, 0)
+      .setStrokeStyle(2, 0xffffff)
+    this.add(border)
+
+    this.add(this.sprite)
+
+    // Make interactive if player's own card and face-up
+    if (this.isPlayerCard && shouldShowFaceUp) {
+      this.sprite.setInteractive({ useHandCursor: true })
+      if (options.onClickCallback) {
+        this.sprite.on('pointerdown', options.onClickCallback)
+      }
+    }
+
     scene.add.existing(this)
   }
 
@@ -61,5 +65,9 @@ export class CardUI extends Phaser.GameObjects.Container {
 
   isFaceUp(): boolean {
     return this.faceUp
+  }
+
+  setTextureKey(textureKey: string): void {
+    this.sprite.setTexture(textureKey)
   }
 }
