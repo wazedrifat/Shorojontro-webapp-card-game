@@ -84,11 +84,10 @@ export class GameEngine extends Phaser.Events.EventEmitter {
   }
 
   private dealCards(): void {
-    // Deal 2 cards to each player
+    // Deal 2 cards to each player (coins already set to 2 in Player constructor)
     for (const player of this.players.values()) {
       const cards = [this.deck.pop()!, this.deck.pop()!]
       player.addCards(cards)
-      player.addCoins(2) // Starting coins
     }
   }
 
@@ -143,8 +142,32 @@ export class GameEngine extends Phaser.Events.EventEmitter {
   }
 
   // Action execution stubs
-  executeAction(_actionKey: string, _targetPlayerId?: string): void {
-    // To be implemented
+  executeAction(actionKey: string, _targetPlayerId?: string): void {
+    const currentPlayer = this.getCurrentPlayer()
+
+    switch (actionKey) {
+      case 'income':
+        // Income: Gain 1 coin from bank
+        currentPlayer.addCoins(1)
+        this.emit('actionResolved', { action: 'income', player: currentPlayer })
+        break
+
+      case 'kill':
+        // Kill: Pay 7 coins, target loses 1 card
+        if (currentPlayer.getCoins() >= 7) {
+          currentPlayer.removeCoins(7)
+          this.emit('actionResolved', { action: 'kill', player: currentPlayer })
+        }
+        break
+
+      case 'characterAbility':
+        // Character ability placeholder
+        this.emit('actionResolved', { action: 'characterAbility', player: currentPlayer })
+        break
+
+      default:
+        break
+    }
   }
 
   challengeAction(_challengerPlayerId: string): void {

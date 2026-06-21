@@ -77,7 +77,10 @@ export class ActionCardsPopup extends Phaser.GameObjects.Container {
     this.cardContainer.removeAll(true)
 
     // Load general action cards
-    const generalActions = ['general_action_ay.jpg']
+    const generalActions = [
+      'general_action_ay.jpg',     // Income
+      'general_action_hotta.jpg',  // Kill (Hotta)
+    ]
 
     this.displayCards(generalActions, 'generalActionCards')
     this.setVisible(true)
@@ -108,17 +111,18 @@ export class ActionCardsPopup extends Phaser.GameObjects.Container {
   }
 
   private displayCards(cards: string[], folder: string): void {
-    const cardWidth = 120
-    const cardHeight = 160
-    const spacing = 140
+    const cardWidth = 110
+    const cardHeight = 150
+    const spacingX = 135
+    const spacingY = 180
     const cardsPerRow = 6
-    const startX = -350
+    const startX = -375
 
     cards.forEach((cardFile, index) => {
       const row = Math.floor(index / cardsPerRow)
       const col = index % cardsPerRow
-      const x = startX + col * spacing
-      const y = row * (cardHeight + 40)
+      const x = startX + col * spacingX
+      const y = row * spacingY
 
       // Card image
       const cardImg = this.scene.add

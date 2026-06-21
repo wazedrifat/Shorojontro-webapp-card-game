@@ -56,7 +56,18 @@ export class GameScene extends Phaser.Scene {
 
     // Set up action cards popup
     this.actionCardsPopup?.setOnCardSelected((cardImage: string) => {
-      this.toast?.info(`Selected action: ${cardImage}`)
+      // Extract action from card image path
+      let actionName = 'action'
+      if (cardImage.includes('general_action_ay')) {
+        actionName = 'Income'
+        this.gameEngine?.executeAction('income')
+      } else if (cardImage.includes('general_action_hotta')) {
+        actionName = 'Kill'
+        this.gameEngine?.executeAction('kill')
+      }
+
+      this.toast?.info(`${actionName} executed!`)
+      this.boardUI?.updatePlayerCoins(this.gameEngine?.getCurrentPlayer().getId() || '', this.gameEngine?.getCurrentPlayer().getCoins() || 0)
       this.actionCardsPopup?.hide()
       this.actionSelectionPopup?.hide()
     })

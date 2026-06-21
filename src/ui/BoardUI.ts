@@ -31,7 +31,7 @@ export class BoardUI extends Phaser.GameObjects.Container {
     this.centerPlayArea = scene.add.container(scene.cameras.main.width / 2, scene.cameras.main.height / 2)
     scene.add.existing(this)
 
-    // Create center bank display with overlapping coins and cards
+    // Create center bank display with cards and coins side by side
     this.centerBankDisplay = scene.add.container(scene.cameras.main.width / 2, scene.cameras.main.height / 2)
     this.createBankDisplay()
   }
@@ -50,32 +50,49 @@ export class BoardUI extends Phaser.GameObjects.Container {
       .setOrigin(0.5)
     this.centerBankDisplay.add(bankLabel)
 
-    // Draw 5-8 overlapping face-down cards (backside)
+    // Bank cards (left side) - 6 overlapping face-down cards
+    const cardsContainer = scene.add.container(-80, 0)
     for (let i = 0; i < 6; i++) {
-      const offsetX = i * 8 - 20
+      const offsetX = i * 8
       const offsetY = i * 5
       const card = scene.add
         .image(offsetX, offsetY, 'card_backside')
         .setDisplaySize(70, 90)
         .setDepth(i)
-      this.centerBankDisplay.add(card)
+      cardsContainer.add(card)
     }
+    this.centerBankDisplay.add(cardsContainer)
 
-    // Draw overlapping coins (mix of types)
-    const coinTypes = [COIN_TEXTURES.coin, COIN_TEXTURES.coinJin, COIN_TEXTURES.coinKhajna, COIN_TEXTURES.coinPuppet]
-    let coinIndex = 0
-    for (let i = 0; i < 12; i++) {
-      const offsetX = (i % 4) * 12 - 18
-      const offsetY = Math.floor(i / 4) * 12 + 50
-      const coinType = coinTypes[coinIndex % coinTypes.length]
+    // Bank coins (right side) - arranged in grid
+    const coinsContainer = scene.add.container(80, 0)
+
+    // 8 regular coins in top row
+    for (let i = 0; i < 8; i++) {
       const coin = scene.add
-        .image(offsetX, offsetY, coinType)
-        .setDisplaySize(50, 50)
-        .setDepth(i + 10)
-      this.centerBankDisplay.add(coin)
-      coinIndex++
+        .image(i * 20 - 70, -15, COIN_TEXTURES.coin)
+        .setDisplaySize(38, 38)
+      coinsContainer.add(coin)
     }
 
+    // Other coin types (2-3 each) in bottom row
+    const otherCoins = [
+      { texture: COIN_TEXTURES.coinJin, count: 3 },
+      { texture: COIN_TEXTURES.coinKhajna, count: 3 },
+      { texture: COIN_TEXTURES.coinPuppet, count: 2 },
+    ]
+
+    let coinX = -60
+    otherCoins.forEach(({ texture, count }) => {
+      for (let i = 0; i < count; i++) {
+        const coin = scene.add
+          .image(coinX, 15, texture)
+          .setDisplaySize(38, 38)
+        coinsContainer.add(coin)
+        coinX += 20
+      }
+    })
+
+    this.centerBankDisplay.add(coinsContainer)
     this.add(this.centerBankDisplay)
   }
 
@@ -87,28 +104,28 @@ export class BoardUI extends Phaser.GameObjects.Container {
     let x: number, y: number, isBottomPlayer: boolean
     if (position === 'top') {
       x = width / 2
-      y = 80
+      y = 90
       isBottomPlayer = false
     } else {
       x = width / 2
-      y = height - 130
+      y = height - 140
       isBottomPlayer = true
     }
 
     const container = scene.add.container(x, y)
 
-    // Background
+    // Background - adjusted to fit content
     const bgColor = parseInt(COLORS.DARK.replace('#', '0x'), 16)
     const strokeColor = parseInt(COLORS.PRIMARY.replace('#', '0x'), 16)
     const bg = scene.add
-      .rectangle(0, 0, width - 40, 100, bgColor)
+      .rectangle(0, 0, width - 20, 110, bgColor)
       .setStrokeStyle(2, strokeColor)
     container.add(bg)
 
-    // Player name (left)
+    // Player name (left) - increased spacing
     const nameText = scene.add
-      .text(-width / 2 + 15, -30, `${player.getName()}${isAI ? ' 🤖' : ' 👤'}`, {
-        fontSize: 16,
+      .text(-width / 2 + 25, -30, `${player.getName()}${isAI ? ' 🤖' : ' 👤'}`, {
+        fontSize: 14,
         color: '#fff',
         fontFamily: 'Arial',
         fontStyle: 'bold',
@@ -116,24 +133,22 @@ export class BoardUI extends Phaser.GameObjects.Container {
       .setOrigin(0, 0.5)
     container.add(nameText)
 
-    // Coins display - show actual coin images
-    const coinsContainer = scene.add.container(-width / 2 + 100, 0)
+    // Coins display
+    const coinsContainer = scene.add.container(-width / 2 + 150, 0)
     
-    // Add individual coins for this player
-    const coinCount = Math.max(player.getCoins(), 2) // Start with at least 2 coins
+    const coinCount = Math.max(player.getCoins(), 2)
     for (let i = 0; i < Math.min(coinCount, 10); i++) {
-      const coinX = i * 15
+      const coinX = i * 17
       const coinImg = scene.add
         .image(coinX, 0, COIN_TEXTURES.coin)
-        .setDisplaySize(25, 25)
+        .setDisplaySize(28, 28)
       coinsContainer.add(coinImg)
     }
 
-    // Add coin count text if more than 10
     if (coinCount > 10) {
       const coinText = scene.add
-        .text(160, 0, `+${coinCount - 10}`, {
-          fontSize: 12,
+        .text(170, 0, `+${coinCount - 10}`, {
+          fontSize: 11,
           color: COLORS.SUCCESS,
           fontFamily: 'Arial',
           fontStyle: 'bold',
@@ -144,11 +159,11 @@ export class BoardUI extends Phaser.GameObjects.Container {
 
     container.add(coinsContainer)
 
-    // Influence display (left-bottom)
+    // Influence display
     const faceDownCount = player.getFaceDownCards().length
     const faceUpCount = player.getFaceUpCards().length
     const influenceText = scene.add
-      .text(-width / 2 + 15, 30, `🔒${faceDownCount} 👁️${faceUpCount}`, {
+      .text(-width / 2 + 25, 30, `🔒${faceDownCount} 👁️${faceUpCount}`, {
         fontSize: 12,
         color: '#aaa',
         fontFamily: 'Arial',
@@ -156,8 +171,8 @@ export class BoardUI extends Phaser.GameObjects.Container {
       .setOrigin(0, 0.5)
     container.add(influenceText)
 
-    // Hand UI - show all cards for your player, hidden for opponent
-    const handUI = new HandUI(scene, 0, 40, this.animationManager)
+    // Hand UI - centered in the player area
+    const handUI = new HandUI(scene, 0, 45, this.animationManager)
     container.add(handUI)
 
     const playerArea: PlayerAreaUI = {
@@ -178,7 +193,7 @@ export class BoardUI extends Phaser.GameObjects.Container {
     const scene = this.scene
     const width = scene.cameras.main.width
     const height = scene.cameras.main.height
-    const buttonY = height / 2 + 180 // Position below bank but above bottom player area
+    const buttonY = height / 2 + 190
 
     // Action Button (left)
     this.createButton(width / 2 - 150, buttonY, 'Action', onAction)
@@ -214,22 +229,21 @@ export class BoardUI extends Phaser.GameObjects.Container {
   updatePlayerCoins(playerId: string, coins: number): void {
     const area = this.playerAreas.get(playerId)
     if (area) {
-      // Clear and rebuild coins display
       area.coinsContainer.removeAll(true)
 
       const displayCoins = Math.max(coins, 2)
       for (let i = 0; i < Math.min(displayCoins, 10); i++) {
-        const coinX = i * 15
+        const coinX = i * 17
         const coinImg = this.scene.add
           .image(coinX, 0, COIN_TEXTURES.coin)
-          .setDisplaySize(25, 25)
+          .setDisplaySize(28, 28)
         area.coinsContainer.add(coinImg)
       }
 
       if (displayCoins > 10) {
         const coinText = this.scene.add
-          .text(160, 0, `+${displayCoins - 10}`, {
-            fontSize: 12,
+          .text(170, 0, `+${displayCoins - 10}`, {
+            fontSize: 11,
             color: COLORS.SUCCESS,
             fontFamily: 'Arial',
             fontStyle: 'bold',

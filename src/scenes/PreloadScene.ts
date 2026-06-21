@@ -47,6 +47,7 @@ export class PreloadScene extends Phaser.Scene {
 
     // Load general action cards
     this.load.image('action_generalActionCards_0', '/assets/cards/generalActionCards/general_action_ay.jpg')
+    this.load.image('action_generalActionCards_1', '/assets/cards/generalActionCards/general_action_hotta.jpg')
 
     // Load character action cards
     const characterActions = [
