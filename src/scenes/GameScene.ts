@@ -375,16 +375,18 @@ export class GameScene extends Phaser.Scene {
           ? this.layout.topNameY
           : this.layout.bottomNameY
         : anchor.y;
+      const statsText = this.isMobile
+        ? `Player ${index + 1}  Coins: 2  Life: ❤️❤️`
+        : `Player ${index + 1}\n\n\nCoins: 2  Life: ❤️❤️`;
+      const textY = labelY;
+      const combinedX = this.isMobile
+        ? this.clamp(this.scale.width * 0.5, this.cardWidth * 0.8, this.scale.width - this.cardWidth * 0.8)
+        : labelX;
       this.add
-        .text(
-          labelX,
-          labelY,
-          `Player ${index + 1}`,
-          {
-          fontSize: "18px",
+        .text(combinedX, textY, statsText, {
+          fontSize: "16px",
           color: "#e9d7a2",
-          },
-        )
+        })
         .setOrigin(this.isMobile ? 0.5 : 1, 0.5)
         .setResolution(textResolution);
     });
@@ -727,7 +729,12 @@ export class GameScene extends Phaser.Scene {
       panel.add(detailContainer);
     };
 
-    activeCard.on("pointerdown", () => {
+    let dragStartX = 0;
+    let isDragging = false;
+    activeCard.on("pointerup", () => {
+      if (isDragging) {
+        return;
+      }
       showActionDetail(deckKeys[0]);
     });
     this.input.on(
@@ -741,6 +748,31 @@ export class GameScene extends Phaser.Scene {
       }
       },
     );
+
+    activeCard.setInteractive({ useHandCursor: true, draggable: true });
+    this.input.setDraggable(activeCard);
+    activeCard.on("dragstart", (_pointer: Phaser.Input.Pointer) => {
+      dragStartX = activeCard.x;
+      isDragging = true;
+    });
+    activeCard.on("drag", (_pointer: Phaser.Input.Pointer, dragX: number) => {
+      activeCard.x = dragX;
+    });
+    activeCard.on("dragend", () => {
+      const deltaX = activeCard.x - dragStartX;
+      if (Math.abs(deltaX) > 60) {
+        cycleCard();
+      }
+      this.tweens.add({
+        targets: activeCard,
+        x: activeX,
+        duration: 180,
+        ease: "Sine.easeOut",
+        onComplete: () => {
+          isDragging = false;
+        },
+      });
+    });
 
     const nextBtn = this.buildMenuButton(
       panelWidth / 2 - 90,
