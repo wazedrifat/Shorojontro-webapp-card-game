@@ -7,7 +7,8 @@ import {
 
 type CardSprite = {
   sprite: Phaser.GameObjects.Image;
-  faceKey: string;
+  scaledKey: string;
+  fullKey: string;
 };
 
 type PlayerAnchor = {
@@ -95,7 +96,7 @@ export class GameScene extends Phaser.Scene {
         .setScale(GameScene.CARD_SCALE)
         .setDepth(10 + index);
 
-      return { sprite, faceKey: this.getScaledCardKey(key) };
+      return { sprite, scaledKey: this.getScaledCardKey(key), fullKey: key };
     });
   }
 
@@ -213,11 +214,11 @@ export class GameScene extends Phaser.Scene {
 
       if (deal.playerIndex === 0) {
         this.time.delayedCall(2000, () => {
-          void this.flipCard(deal.card.sprite, deal.card.faceKey);
+          void this.flipCard(deal.card.sprite, deal.card.scaledKey);
         });
         deal.card.sprite.setInteractive({ useHandCursor: true });
         deal.card.sprite.on("pointerdown", () => {
-          this.showCardPopup(deal.card.faceKey);
+          this.showCardPopup(deal.card.fullKey);
         });
       }
     }
@@ -355,19 +356,14 @@ export class GameScene extends Phaser.Scene {
 
     const container = this.add.container(x, y, [buttonBg, buttonText]);
     container.setSize(buttonWidth, buttonHeight);
-    container.setInteractive(
-      new Phaser.Geom.Rectangle(
-        -buttonWidth / 2,
-        -buttonHeight / 2,
-        buttonWidth,
-        buttonHeight,
-      ),
-      Phaser.Geom.Rectangle.Contains,
-    );
+    container.setInteractive({ useHandCursor: true });
+    buttonBg.setInteractive({ useHandCursor: true });
 
-    container.on("pointerdown", () => {
+    const handleClick = () => {
       this.toggleActionMenu(textResolution);
-    });
+    };
+    container.on("pointerup", handleClick);
+    buttonBg.on("pointerup", handleClick);
 
     container.on("pointerover", () => {
       buttonBg.setFillStyle(0x243b37, 0.95);
@@ -448,13 +444,13 @@ export class GameScene extends Phaser.Scene {
 
     const container = this.add.container(x, y, [bg, text]);
     container.setSize(width, height);
-    container.setInteractive(
-      new Phaser.Geom.Rectangle(-width / 2, -height / 2, width, height),
-      Phaser.Geom.Rectangle.Contains,
-    );
+    container.setInteractive({ useHandCursor: true });
+    bg.setInteractive({ useHandCursor: true });
     container.on("pointerover", () => bg.setFillStyle(0x2b4843, 1));
     container.on("pointerout", () => bg.setFillStyle(0x223935, 0.9));
-    container.on("pointerdown", () => onClick());
+    const handleClick = () => onClick();
+    container.on("pointerup", handleClick);
+    bg.on("pointerup", handleClick);
     return container;
   }
 
