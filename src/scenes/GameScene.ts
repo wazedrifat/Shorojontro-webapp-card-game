@@ -31,6 +31,7 @@ export class GameScene extends Phaser.Scene {
   private actionMenu?: Phaser.GameObjects.Container;
   private actionPanel?: Phaser.GameObjects.Container;
   private actionOverlay?: Phaser.GameObjects.Rectangle;
+  private cardPopup?: Phaser.GameObjects.Container;
 
   constructor() {
     super("GameScene");
@@ -213,6 +214,10 @@ export class GameScene extends Phaser.Scene {
       if (deal.playerIndex === 0) {
         this.time.delayedCall(2000, () => {
           void this.flipCard(deal.card.sprite, deal.card.faceKey);
+        });
+        deal.card.sprite.setInteractive({ useHandCursor: true });
+        deal.card.sprite.on("pointerdown", () => {
+          this.showCardPopup(deal.card.faceKey);
         });
       }
     }
@@ -585,7 +590,55 @@ export class GameScene extends Phaser.Scene {
       console.log("Selected action card:", currentKey);
     };
 
-    activeCard.on("pointerdown", cycleCard);
+    const deckContainer = this.add.container(0, 0, [
+      ...stackSprites,
+      activeCard,
+    ]);
+
+    const showActionDetail = (cardKey: string) => {
+      deckContainer.setVisible(false);
+      nextBtn.setVisible(false);
+      const detailCard = this.buildPopupCardSprite(cardKey, panelWidth * 0.5);
+      detailCard.setPosition(0, 20);
+
+      const playBtn = this.buildMenuButton(
+        panelWidth / 2 - 90,
+        panelHeight / 2 - 40,
+        "Play",
+        textResolution,
+        () => {
+          // eslint-disable-next-line no-console
+          console.log("Play action card:", cardKey);
+          this.actionPanel?.destroy(true);
+          this.actionPanel = undefined;
+          this.actionOverlay?.destroy();
+          this.actionOverlay = undefined;
+        },
+      );
+
+      const backBtn = this.buildMenuButton(
+        -panelWidth / 2 + 90,
+        panelHeight / 2 - 40,
+        "Back",
+        textResolution,
+        () => {
+          detailContainer.destroy(true);
+          deckContainer.setVisible(true);
+          nextBtn.setVisible(true);
+        },
+      );
+
+      const detailContainer = this.add.container(0, 0, [
+        detailCard,
+        playBtn,
+        backBtn,
+      ]);
+      panel.add(detailContainer);
+    };
+
+    activeCard.on("pointerdown", () => {
+      showActionDetail(deckKeys[0]);
+    });
     this.input.on(
       "wheel",
       (_pointer: Phaser.Input.Pointer, _dx: number, dy: number) => {
@@ -617,8 +670,7 @@ export class GameScene extends Phaser.Scene {
       panelBg,
       title,
       closeBtn,
-      ...stackSprites,
-      activeCard,
+      deckContainer,
       nextBtn,
       closeHint,
     ]);
@@ -687,6 +739,54 @@ export class GameScene extends Phaser.Scene {
 
   private getScaledCardKey(key: string) {
     return `${key}__scaled`;
+  }
+
+  private showCardPopup(textureKey: string) {
+    if (this.cardPopup) {
+      this.cardPopup.destroy(true);
+    }
+
+    const { width, height } = this.scale;
+    const overlay = this.add
+      .rectangle(width / 2, height / 2, width, height, 0x000000, 0.6)
+      .setInteractive()
+      .setDepth(520);
+
+    const card = this.buildPopupCardSprite(
+      textureKey,
+      width * 0.86,
+      height * 0.86,
+    );
+    card.setPosition(width / 2, height / 2);
+
+    const popup = this.add.container(0, 0, [overlay, card]);
+    popup.setDepth(521);
+
+    overlay.on("pointerdown", () => {
+      popup.destroy(true);
+      this.cardPopup = undefined;
+    });
+
+    this.cardPopup = popup;
+  }
+
+  private buildPopupCardSprite(
+    textureKey: string,
+    maxWidth: number,
+    maxHeight?: number,
+  ) {
+    const texture = this.textures.get(textureKey);
+    const source = texture?.getSourceImage() as
+      | HTMLImageElement
+      | HTMLCanvasElement
+      | undefined;
+    const width = source?.width ?? this.cardWidth;
+    const height = source?.height ?? this.cardHeight;
+    const scale = Math.min(1, maxWidth / width);
+    const maxScaleByHeight = maxHeight ? maxHeight / height : 1;
+    const finalScale = Math.min(scale, maxScaleByHeight);
+
+    return this.add.image(0, 0, textureKey).setScale(finalScale);
   }
 
   private calculateCardBaseScale(viewportWidth: number) {
