@@ -927,12 +927,15 @@ export class GameScene extends Phaser.Scene {
 
   private addPlayerCardHover(card: Phaser.GameObjects.Image) {
     const baseScale = card.scale;
+    const baseAngle = card.angle;
+    card.setData("baseScale", baseScale);
+    card.setData("baseAngle", baseAngle);
     card.setInteractive({ useHandCursor: true });
     card.on("pointerover", () => {
       this.tweens.add({
         targets: card,
         scale: baseScale * 1.06,
-        angle: card.angle + 4,
+        angle: baseAngle + 4,
         duration: 160,
         ease: "Sine.easeOut",
       });
@@ -941,7 +944,7 @@ export class GameScene extends Phaser.Scene {
       this.tweens.add({
         targets: card,
         scale: baseScale,
-        angle: card.angle - 4,
+        angle: baseAngle,
         duration: 160,
         ease: "Sine.easeOut",
       });
@@ -950,12 +953,15 @@ export class GameScene extends Phaser.Scene {
 
   private addOpponentCardHover(card: Phaser.GameObjects.Image) {
     const baseScale = card.scale;
+    const baseAngle = card.angle;
+    card.setData("baseScale", baseScale);
+    card.setData("baseAngle", baseAngle);
     card.setInteractive({ useHandCursor: true });
     card.on("pointerover", () => {
       this.tweens.add({
         targets: card,
         scale: baseScale * 1.03,
-        angle: card.angle - 3,
+        angle: baseAngle - 3,
         duration: 160,
         ease: "Sine.easeOut",
       });
@@ -964,7 +970,7 @@ export class GameScene extends Phaser.Scene {
       this.tweens.add({
         targets: card,
         scale: baseScale,
-        angle: card.angle + 3,
+        angle: baseAngle,
         duration: 160,
         ease: "Sine.easeOut",
       });
