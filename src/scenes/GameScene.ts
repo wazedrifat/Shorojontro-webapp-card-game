@@ -26,6 +26,16 @@ export class GameScene extends Phaser.Scene {
   private cardBaseScale = 0.074;
   private cardWidth = 160;
   private cardHeight = 220;
+  private isMobile = false;
+  private layout = {
+    topNameY: 0,
+    topCardY: 0,
+    titleY: 0,
+    bankY: 0,
+    actionY: 0,
+    bottomNameY: 0,
+    bottomCardY: 0,
+  };
   private deckPosition!: Phaser.Math.Vector2;
   private bankPosition!: Phaser.Math.Vector2;
   private actionAnchorX = 0;
@@ -42,16 +52,25 @@ export class GameScene extends Phaser.Scene {
   create() {
     const { width, height } = this.scale;
     const textResolution = this.getTextResolution();
-    this.cardBaseScale = this.calculateCardBaseScale(width);
+    this.isMobile = this.isMobileViewport(width, height);
+    this.cardBaseScale = this.calculateCardBaseScale(width, height);
     this.prepareScaledCardTextures();
     this.cacheCardDimensions();
+    this.actionAnchorX = Math.max(width * 0.06, Math.max(160, width * 0.12) / 2 + width * 0.02);
 
     this.add
       .rectangle(width / 2, height / 2, width, height, 0x0b1615, 1)
       .setDepth(-5);
 
+    this.calculateLayout();
+
+    const titleX = this.isMobile
+      ? width / 2 - this.cardWidth * 0.9
+      : this.clamp(this.actionAnchorX - this.cardWidth * 0.6, 24, width - 24);
+    const titleY = this.isMobile ? this.layout.titleY : height * 0.43;
+
     this.add
-      .text(width / 2 - this.cardWidth * 0.9, height / 2 - this.cardHeight * 1.15, "Shorojontro", {
+      .text(titleX, titleY, "Shorojontro", {
         fontSize: "28px",
         color: "#e9d7a2",
         fontStyle: "bold",
@@ -59,16 +78,17 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0, 0.5)
       .setResolution(textResolution);
 
-    this.deckPosition = new Phaser.Math.Vector2(width / 2, height / 2 + height * 0.02);
+    this.deckPosition = new Phaser.Math.Vector2(width / 2, this.layout.bankY);
     const bankX = this.clamp(
       width * 0.72,
       this.cardWidth * 0.8,
       width - this.cardWidth * 0.6,
     );
-    const bankY = height / 2 + height * 0.04;
+    const bankY = this.layout.bankY + this.cardHeight * 0.05;
     this.bankPosition = new Phaser.Math.Vector2(bankX, bankY);
     this.addPlayerLabels(textResolution);
     this.addActionButton(textResolution);
+    this.actionButton?.setVisible(false);
 
     this.runSequence(2).catch((error) => {
       // eslint-disable-next-line no-console
@@ -83,6 +103,7 @@ export class GameScene extends Phaser.Scene {
     await this.shuffleDeck(deck, 3000);
     await this.dealCards(deck, playerCount);
     await this.dropCoins(playerCount);
+    this.showActionButton();
   }
 
   private buildDeck(): CardSprite[] {
@@ -202,7 +223,11 @@ export class GameScene extends Phaser.Scene {
       const spacing = cardWidth * (1 - overlapRatio);
       const offset = (cardIndexForPlayer === 0 ? -1 : 1) * spacing * 0.5;
       const sideX = anchor.x + offset;
-      const sideY = anchor.y;
+      const sideY = this.isMobile
+        ? deal.playerIndex === 1
+          ? this.layout.topCardY
+          : this.layout.bottomCardY
+        : anchor.y;
       const spreadAngle = cardIndexForPlayer === 0 ? -3 : 3;
 
       await this.tweenPromise({
@@ -332,17 +357,25 @@ export class GameScene extends Phaser.Scene {
   private addPlayerLabels(textResolution: number) {
     const anchors = this.getPlayerAnchors(2);
     anchors.forEach((anchor, index) => {
+      const labelX = this.isMobile
+        ? this.clamp(anchor.x, this.cardWidth * 0.7, this.scale.width - this.cardWidth * 0.7)
+        : anchor.x - Math.max(this.cardWidth * 1.4, this.scale.width * 0.1);
+      const labelY = this.isMobile
+        ? index === 1
+          ? this.layout.topNameY
+          : this.layout.bottomNameY
+        : anchor.y;
       this.add
         .text(
-          anchor.x - Math.max(this.cardWidth * 1.4, this.scale.width * 0.1),
-          anchor.y,
+          labelX,
+          labelY,
           `Player ${index + 1}`,
           {
           fontSize: "18px",
           color: "#e9d7a2",
           },
         )
-        .setOrigin(1, 0.5)
+        .setOrigin(this.isMobile ? 0.5 : 1, 0.5)
         .setResolution(textResolution);
     });
   }
@@ -352,7 +385,7 @@ export class GameScene extends Phaser.Scene {
     const buttonWidth = Math.max(160, width * 0.12);
     const buttonHeight = 46;
     const x = Math.max(width * 0.06, buttonWidth / 2 + width * 0.02);
-    const y = height * 0.5;
+    const y = this.layout.actionY || height * 0.5;
     this.actionAnchorX = x;
 
     const buttonBg = this.add
@@ -387,6 +420,19 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.actionButton = container;
+  }
+
+  private showActionButton() {
+    if (!this.actionButton) {
+      return;
+    }
+    const { width, height } = this.scale;
+    if (this.isMobile) {
+      this.actionButton.setPosition(width / 2, this.layout.actionY);
+    } else {
+      this.actionButton.setPosition(this.actionAnchorX, height * 0.5);
+    }
+    this.actionButton.setVisible(true);
   }
 
   private toggleActionMenu(textResolution: number) {
@@ -525,13 +571,23 @@ export class GameScene extends Phaser.Scene {
 
     const cardKeys =
       type === "general" ? generalActionCardKeys : characterActionCardKeys;
+    const useFullActionCards = this.isMobileViewport(width, height);
+    const getActionKey = (key: string) =>
+      useFullActionCards ? key : this.getScaledCardKey(key);
     const deckKeys = Phaser.Utils.Array.Shuffle([...cardKeys]);
     const deckX = panelWidth * 0.16;
     const deckY = panelHeight * 0.05;
     const activeX = 0;
     const activeY = 30;
-    const cardMaxWidth = panelWidth * 0.32;
-    const cardScale = cardMaxWidth / this.cardWidth;
+    const sampleActionKey = getActionKey(deckKeys[0]);
+    const sampleTexture = this.textures.get(sampleActionKey);
+    const sampleSource = sampleTexture?.getSourceImage() as
+      | HTMLImageElement
+      | HTMLCanvasElement
+      | undefined;
+    const actionWidth = sampleSource?.width ?? this.cardWidth;
+    const cardMaxWidth = panelWidth * (useFullActionCards ? 0.6 : 0.32);
+    const cardScale = cardMaxWidth / actionWidth;
 
     const stackSize = 3;
     const getStackKey = (index: number) => {
@@ -544,7 +600,7 @@ export class GameScene extends Phaser.Scene {
         .image(
           deckX + index * 6,
           deckY + index * 6,
-          this.getScaledCardKey(getStackKey(index)),
+          getActionKey(getStackKey(index)),
         )
         .setScale(cardScale * (1 - index * 0.03))
         .setAngle(-6 + index * 2)
@@ -552,13 +608,13 @@ export class GameScene extends Phaser.Scene {
     );
 
     const activeCard = this.add
-      .image(activeX, activeY, this.getScaledCardKey(deckKeys[0]))
+      .image(activeX, activeY, getActionKey(deckKeys[0]))
       .setScale(cardScale)
       .setInteractive({ useHandCursor: true });
 
     const updateStackFaces = () => {
       stackSprites.forEach((sprite, index) => {
-        sprite.setTexture(this.getScaledCardKey(getStackKey(index)));
+        sprite.setTexture(getActionKey(getStackKey(index)));
       });
     };
 
@@ -584,7 +640,7 @@ export class GameScene extends Phaser.Scene {
         ease: "Cubic.easeIn",
         onComplete: () => {
           updateStackFaces();
-          activeCard.setTexture(this.getScaledCardKey(nextKey));
+          activeCard.setTexture(getActionKey(nextKey));
           activeCard.setPosition(activeX, activeY);
           activeCard.setAngle(0);
           activeCard.setAlpha(1);
@@ -608,12 +664,18 @@ export class GameScene extends Phaser.Scene {
     const showActionDetail = (cardKey: string) => {
       deckContainer.setVisible(false);
       nextBtn.setVisible(false);
-      const detailCard = this.buildPopupCardSprite(cardKey, panelWidth * 0.5);
+      const detailCard = this.buildPopupCardSprite(
+        cardKey,
+        panelWidth * 0.7,
+        panelHeight * 0.7,
+      );
       detailCard.setPosition(0, 20);
 
+      const buttonY = panelHeight / 2 - 54;
+      const buttonSpacing = Math.min(260, panelWidth * 0.5);
       const playBtn = this.buildMenuButton(
-        panelWidth / 2 - 90,
-        panelHeight / 2 - 40,
+        buttonSpacing / 2,
+        buttonY,
         "Play",
         textResolution,
         () => {
@@ -627,8 +689,8 @@ export class GameScene extends Phaser.Scene {
       );
 
       const backBtn = this.buildMenuButton(
-        -panelWidth / 2 + 90,
-        panelHeight / 2 - 40,
+        -buttonSpacing / 2,
+        buttonY,
         "Back",
         textResolution,
         () => {
@@ -799,14 +861,85 @@ export class GameScene extends Phaser.Scene {
     return this.add.image(0, 0, textureKey).setScale(finalScale);
   }
 
-  private calculateCardBaseScale(viewportWidth: number) {
-    const targetCardWidth = viewportWidth * 0.16;
+  private calculateCardBaseScale(viewportWidth: number, viewportHeight: number) {
+    const isMobile = this.isMobileViewport(viewportWidth, viewportHeight);
+    const targetCardWidth = viewportWidth * (isMobile ? 0.22 : 0.16);
     const texture = this.textures.get("cards/card_backside");
     const source = texture?.getSourceImage() as HTMLImageElement | HTMLCanvasElement;
     if (!source) {
       return 0.074;
     }
-    return Math.min(0.18, Math.max(0.06, targetCardWidth / source.width));
+    const minScale = isMobile ? 0.1 : 0.06;
+    const maxScale = isMobile ? 0.24 : 0.18;
+    return Math.min(maxScale, Math.max(minScale, targetCardWidth / source.width));
+  }
+
+  private calculateLayout() {
+    const { width, height } = this.scale;
+    if (!this.isMobile) {
+      this.layout = {
+        topNameY: height * 0.15,
+        topCardY: height * 0.25,
+        titleY: height * 0.42,
+        bankY: height * 0.5,
+        actionY: height * 0.58,
+        bottomNameY: height * 0.68,
+        bottomCardY: height * 0.8,
+      };
+      return;
+    }
+
+    const topMargin = height * 0.03;
+    const bottomMargin = height * 0.03;
+    const labelBand = height * 0.06;
+    const cardBand = height * 0.18;
+    const titleBand = height * 0.08;
+    const bankBand = height * 0.12;
+    const actionBand = height * 0.1;
+
+    const total =
+      topMargin +
+      labelBand +
+      cardBand +
+      titleBand +
+      bankBand +
+      actionBand +
+      labelBand +
+      cardBand +
+      bottomMargin;
+    const scale = (height - height * 0.02) / total;
+
+    const tm = topMargin * scale;
+    const lb = labelBand * scale;
+    const cb = cardBand * scale;
+    const tb = titleBand * scale;
+    const bb = bankBand * scale;
+    const ab = actionBand * scale;
+    const bm = bottomMargin * scale;
+
+    const topNameY = tm + lb * 0.6;
+    const topCardY = tm + lb + cb * 0.55;
+    const titleY = tm + lb + cb + tb * 0.5;
+    const bankY = tm + lb + cb + tb + bb * 0.55;
+    const actionY = tm + lb + cb + tb + bb + ab * 0.75;
+    const bottomNameY = tm + lb + cb + tb + bb + ab + lb * 0.6;
+    const bottomCardY =
+      tm + lb + cb + tb + bb + ab + lb + cb * 0.6;
+
+    this.layout = {
+      topNameY,
+      topCardY,
+      titleY,
+      bankY,
+      actionY,
+      bottomNameY,
+      bottomCardY,
+    };
+  }
+
+  private isMobileViewport(viewportWidth: number, viewportHeight: number) {
+    const shortestSide = Math.min(viewportWidth, viewportHeight);
+    return shortestSide <= 720;
   }
 
   private clamp(value: number, min: number, max: number) {
