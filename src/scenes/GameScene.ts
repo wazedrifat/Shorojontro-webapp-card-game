@@ -9,6 +9,7 @@ type CardSprite = {
   sprite: Phaser.GameObjects.Image;
   scaledKey: string;
   fullKey: string;
+  ownerIndex?: number;
 };
 
 type PlayerAnchor = {
@@ -44,6 +45,7 @@ export class GameScene extends Phaser.Scene {
   private actionPanel?: Phaser.GameObjects.Container;
   private actionOverlay?: Phaser.GameObjects.Rectangle;
   private cardPopup?: Phaser.GameObjects.Container;
+  private deckIdleTweens: Phaser.Tweens.Tween[] = [];
 
   constructor() {
     super("GameScene");
@@ -104,6 +106,7 @@ export class GameScene extends Phaser.Scene {
     await this.dealCards(deck, playerCount);
     await this.dropCoins(playerCount);
     this.showActionButton();
+    this.enableHoverEffects();
   }
 
   private buildDeck(): CardSprite[] {
@@ -210,6 +213,7 @@ export class GameScene extends Phaser.Scene {
       for (let playerIndex = 0; playerIndex < playerCount; playerIndex += 1) {
         const card = deck.pop();
         if (card) {
+          card.ownerIndex = playerIndex;
           dealOrder.push({ card, playerIndex });
         }
       }
@@ -249,6 +253,9 @@ export class GameScene extends Phaser.Scene {
         deal.card.sprite.on("pointerdown", () => {
           this.showCardPopup(deal.card.fullKey);
         });
+        this.addPlayerCardHover(deal.card.sprite);
+      } else {
+        this.addOpponentCardHover(deal.card.sprite);
       }
     }
 
@@ -259,6 +266,7 @@ export class GameScene extends Phaser.Scene {
       );
       card.sprite.setDepth(10 + index);
     });
+    this.startDeckIdle(deck);
   }
 
   private async dropCoins(playerCount: number) {
@@ -318,6 +326,8 @@ export class GameScene extends Phaser.Scene {
         });
       }),
     );
+
+    payoutCoins.forEach((coin) => this.addCoinHover(coin));
   }
 
   private getPlayerAnchors(playerCount: number): PlayerAnchor[] {
@@ -868,6 +878,104 @@ export class GameScene extends Phaser.Scene {
     const finalScale = Math.min(scale, maxScaleByHeight);
 
     return this.add.image(0, 0, textureKey).setScale(finalScale);
+  }
+
+  private enableHoverEffects() {
+    this.children.list.forEach((child) => {
+      if (child instanceof Phaser.GameObjects.Image) {
+        if (child.texture.key.includes("cards/coins/coin")) {
+          this.addCoinHover(child);
+        }
+        if (child.texture.key.includes("cards/card_backside")) {
+          this.addOpponentCardHover(child);
+        }
+      }
+    });
+  }
+
+  private addPlayerCardHover(card: Phaser.GameObjects.Image) {
+    const baseScale = card.scale;
+    card.setInteractive({ useHandCursor: true });
+    card.on("pointerover", () => {
+      this.tweens.add({
+        targets: card,
+        scale: baseScale * 1.06,
+        angle: card.angle + 4,
+        duration: 160,
+        ease: "Sine.easeOut",
+      });
+    });
+    card.on("pointerout", () => {
+      this.tweens.add({
+        targets: card,
+        scale: baseScale,
+        angle: card.angle - 4,
+        duration: 160,
+        ease: "Sine.easeOut",
+      });
+    });
+  }
+
+  private addOpponentCardHover(card: Phaser.GameObjects.Image) {
+    const baseScale = card.scale;
+    card.setInteractive({ useHandCursor: true });
+    card.on("pointerover", () => {
+      this.tweens.add({
+        targets: card,
+        scale: baseScale * 1.03,
+        angle: card.angle - 3,
+        duration: 160,
+        ease: "Sine.easeOut",
+      });
+    });
+    card.on("pointerout", () => {
+      this.tweens.add({
+        targets: card,
+        scale: baseScale,
+        angle: card.angle + 3,
+        duration: 160,
+        ease: "Sine.easeOut",
+      });
+    });
+  }
+
+  private addCoinHover(coin: Phaser.GameObjects.Image) {
+    const baseScale = coin.scale;
+    coin.setInteractive({ useHandCursor: true });
+    coin.on("pointerover", () => {
+      this.tweens.add({
+        targets: coin,
+        scale: baseScale * 1.1,
+        angle: coin.angle + 10,
+        duration: 120,
+        ease: "Sine.easeOut",
+      });
+    });
+    coin.on("pointerout", () => {
+      this.tweens.add({
+        targets: coin,
+        scale: baseScale,
+        angle: coin.angle - 10,
+        duration: 120,
+        ease: "Sine.easeOut",
+      });
+    });
+  }
+
+  private startDeckIdle(deck: CardSprite[]) {
+    this.deckIdleTweens.forEach((tween) => tween.stop());
+    this.deckIdleTweens = [];
+    deck.slice(-4).forEach((card, index) => {
+      const tween = this.tweens.add({
+        targets: card.sprite,
+        angle: card.sprite.angle + (index % 2 === 0 ? 1.2 : -1.2),
+        duration: 1200 + index * 120,
+        ease: "Sine.easeInOut",
+        yoyo: true,
+        repeat: -1,
+      });
+      this.deckIdleTweens.push(tween);
+    });
   }
 
   private calculateCardBaseScale(viewportWidth: number, viewportHeight: number) {
