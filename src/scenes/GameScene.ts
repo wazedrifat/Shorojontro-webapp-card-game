@@ -445,7 +445,7 @@ export class GameScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const menuWidth = Math.max(220, width * 0.16);
     const menuHeight = 140;
-    const x = this.actionAnchorX || width * 0.08;
+    const x = this.isMobile ? width / 2 : this.actionAnchorX || width * 0.08;
     const y = height * 0.5 + 70;
 
     const menuBg = this.add
@@ -534,19 +534,42 @@ export class GameScene extends Phaser.Scene {
       .setDepth(500);
     this.actionOverlay = overlay;
 
-    const panelWidth = Math.min(width * 0.72, 900);
-    const panelHeight = Math.min(height * 0.62, 560);
+    const cardKeys =
+      type === "general" ? generalActionCardKeys : characterActionCardKeys;
+    const getActionKey = (key: string) => key;
+    const deckKeys = Phaser.Utils.Array.Shuffle([...cardKeys]);
+    const sampleKey = getActionKey(deckKeys[0]);
+    const sampleTexture = this.textures.get(sampleKey);
+    const sampleSource = sampleTexture?.getSourceImage() as
+      | HTMLImageElement
+      | HTMLCanvasElement
+      | undefined;
+    const actionWidth = sampleSource?.width ?? this.cardWidth;
+    const actionHeight = sampleSource?.height ?? this.cardHeight;
+
+    const cardTargetWidth = Math.min(width * 0.78, actionWidth);
+    const cardScale = cardTargetWidth / actionWidth;
+    const cardTargetHeight = actionHeight * cardScale;
+
+    const panelWidth = Math.min(width * 0.9, cardTargetWidth * 1.18 + 140);
+    const panelHeight = Math.min(height * 0.9, cardTargetHeight * 1.35 + 180);
+
     const panelBg = this.add
       .rectangle(0, 0, panelWidth, panelHeight, 0x132220, 0.96)
       .setStrokeStyle(2, 0xd7c48f, 0.9)
       .setOrigin(0.5);
 
     const title = this.add
-      .text(0, -panelHeight / 2 + 26, `${type === "general" ? "General" : "Character"} Actions`, {
-        fontSize: "22px",
-        color: "#f3e7c2",
-        fontStyle: "bold",
-      })
+      .text(
+        0,
+        -panelHeight / 2 + 26,
+        `${type === "general" ? "General" : "Character"} Actions`,
+        {
+          fontSize: "22px",
+          color: "#f3e7c2",
+          fontStyle: "bold",
+        },
+      )
       .setOrigin(0.5)
       .setResolution(textResolution);
 
@@ -568,26 +591,12 @@ export class GameScene extends Phaser.Scene {
 
     closeBtn.on("pointerdown", closePanel);
     overlay.on("pointerdown", closePanel);
-
-    const cardKeys =
-      type === "general" ? generalActionCardKeys : characterActionCardKeys;
-    const useFullActionCards = this.isMobileViewport(width, height);
-    const getActionKey = (key: string) =>
-      useFullActionCards ? key : this.getScaledCardKey(key);
-    const deckKeys = Phaser.Utils.Array.Shuffle([...cardKeys]);
-    const deckX = panelWidth * 0.16;
+    const deckX = panelWidth * 0.08;
     const deckY = panelHeight * 0.05;
-    const activeX = 0;
+    const activeX = -panelWidth * 0.08;
     const activeY = 30;
-    const sampleActionKey = getActionKey(deckKeys[0]);
-    const sampleTexture = this.textures.get(sampleActionKey);
-    const sampleSource = sampleTexture?.getSourceImage() as
-      | HTMLImageElement
-      | HTMLCanvasElement
-      | undefined;
-    const actionWidth = sampleSource?.width ?? this.cardWidth;
-    const cardMaxWidth = panelWidth * (useFullActionCards ? 0.6 : 0.32);
-    const cardScale = cardMaxWidth / actionWidth;
+    const cardMaxWidth = panelWidth * 0.72;
+    const finalCardScale = Math.min(cardMaxWidth / actionWidth, cardScale);
 
     const stackSize = 3;
     const getStackKey = (index: number) => {
@@ -602,14 +611,14 @@ export class GameScene extends Phaser.Scene {
           deckY + index * 6,
           getActionKey(getStackKey(index)),
         )
-        .setScale(cardScale * (1 - index * 0.03))
+        .setScale(finalCardScale * (1 - index * 0.03))
         .setAngle(-6 + index * 2)
         .setDepth(index),
     );
 
     const activeCard = this.add
       .image(activeX, activeY, getActionKey(deckKeys[0]))
-      .setScale(cardScale)
+      .setScale(finalCardScale)
       .setInteractive({ useHandCursor: true });
 
     const updateStackFaces = () => {
@@ -634,7 +643,7 @@ export class GameScene extends Phaser.Scene {
         x: deckX + 20,
         y: deckY + 20,
         angle: -18,
-        scale: cardScale * 0.75,
+        scale: finalCardScale * 0.75,
         alpha: 0.4,
         duration: 260,
         ease: "Cubic.easeIn",
@@ -646,7 +655,7 @@ export class GameScene extends Phaser.Scene {
           activeCard.setAlpha(1);
           this.tweens.add({
             targets: activeCard,
-            scale: cardScale,
+            scale: finalCardScale,
             duration: 260,
             ease: "Back.easeOut",
           });
