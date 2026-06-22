@@ -3,7 +3,7 @@ import "./style.css";
 import { GameScene } from "./scenes/GameScene";
 import { PreloadScene } from "./scenes/PreloadScene";
 
-const config: Phaser.Types.Core.GameConfig = {
+const config: Phaser.Types.Core.GameConfig & { resolution?: number } = {
   type: Phaser.AUTO,
   parent: "app",
   backgroundColor: "#0f1d1c",
