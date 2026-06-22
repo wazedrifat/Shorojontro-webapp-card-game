@@ -28,6 +28,7 @@ export class GameScene extends Phaser.Scene {
   private cardHeight = 220;
   private deckPosition!: Phaser.Math.Vector2;
   private bankPosition!: Phaser.Math.Vector2;
+  private actionAnchorX = 0;
   private actionButton?: Phaser.GameObjects.Container;
   private actionMenu?: Phaser.GameObjects.Container;
   private actionPanel?: Phaser.GameObjects.Container;
@@ -58,11 +59,14 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0, 0.5)
       .setResolution(textResolution);
 
-    this.deckPosition = new Phaser.Math.Vector2(width / 2, height / 2 + 10);
-    this.bankPosition = new Phaser.Math.Vector2(
-      width / 2 + 220,
-      height / 2 + 30,
+    this.deckPosition = new Phaser.Math.Vector2(width / 2, height / 2 + height * 0.02);
+    const bankX = this.clamp(
+      width * 0.72,
+      this.cardWidth * 0.8,
+      width - this.cardWidth * 0.6,
     );
+    const bankY = height / 2 + height * 0.04;
+    this.bankPosition = new Phaser.Math.Vector2(bankX, bankY);
     this.addPlayerLabels(textResolution);
     this.addActionButton(textResolution);
 
@@ -234,15 +238,21 @@ export class GameScene extends Phaser.Scene {
 
   private async dropCoins(playerCount: number) {
     const coins: Phaser.GameObjects.Image[] = [];
+    const { width, height } = this.scale;
     const cardTexture = this.textures.get(this.getScaledCardKey("cards/card_backside"));
     const cardSource = cardTexture?.getSourceImage() as
       | HTMLImageElement
       | HTMLCanvasElement
       | undefined;
     const cardWidth = cardSource?.width ?? 160;
+    const anchors = this.getPlayerAnchors(playerCount);
+    const spawnX =
+      anchors.reduce((sum, anchor) => sum + anchor.x, 0) / anchors.length;
+    const spawnY =
+      anchors.reduce((sum, anchor) => sum + anchor.y, 0) / anchors.length;
     for (let i = 0; i < 50; i += 1) {
       const coin = this.add
-        .image(this.deckPosition.x, -80, "cards/coins/coin")
+        .image(spawnX, spawnY, "cards/coins/coin")
         .setScale(GameScene.COIN_SCALE)
         .setDepth(20 + i);
       coins.push(coin);
@@ -260,7 +270,6 @@ export class GameScene extends Phaser.Scene {
 
     await this.delay(1400);
 
-    const anchors = this.getPlayerAnchors(playerCount);
     const payoutCoins = coins.slice(0, playerCount * 2);
 
     await Promise.all(
@@ -268,7 +277,11 @@ export class GameScene extends Phaser.Scene {
         const playerIndex = Math.floor(index / 2);
         const anchor = anchors[playerIndex];
         const offset = index % 2 === 0 ? -18 : 18;
-        const coinBaseX = anchor.x + Math.max(cardWidth * 1.2, this.scale.width * 0.08);
+        const coinBaseX = this.clamp(
+          anchor.x + Math.max(cardWidth * 1.2, this.scale.width * 0.08),
+          cardWidth * 0.6,
+          width - cardWidth * 0.6,
+        );
         return this.tweenPromise({
           targets: coin,
           x: coinBaseX + offset,
@@ -338,8 +351,9 @@ export class GameScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const buttonWidth = Math.max(160, width * 0.12);
     const buttonHeight = 46;
-    const x = width * 0.08;
+    const x = Math.max(width * 0.06, buttonWidth / 2 + width * 0.02);
     const y = height * 0.5;
+    this.actionAnchorX = x;
 
     const buttonBg = this.add
       .rectangle(0, 0, buttonWidth, buttonHeight, 0x1b2c2a, 0.9)
@@ -385,7 +399,7 @@ export class GameScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const menuWidth = Math.max(220, width * 0.16);
     const menuHeight = 140;
-    const x = width * 0.08;
+    const x = this.actionAnchorX || width * 0.08;
     const y = height * 0.5 + 70;
 
     const menuBg = this.add
@@ -793,6 +807,10 @@ export class GameScene extends Phaser.Scene {
       return 0.074;
     }
     return Math.min(0.18, Math.max(0.06, targetCardWidth / source.width));
+  }
+
+  private clamp(value: number, min: number, max: number) {
+    return Math.min(max, Math.max(min, value));
   }
 
   private cacheCardDimensions() {
